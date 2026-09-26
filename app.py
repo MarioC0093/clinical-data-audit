@@ -2,6 +2,10 @@
 
 Presentation layer purely consuming core clinical_audit modules without
 containing validation or statistical logic.
+
+Author: MarioC0093
+Contact: https://github.com/MarioC0093
+Repository: https://github.com/MarioC0093/clinical-data-audit
 """
 
 from pathlib import Path
@@ -50,7 +54,7 @@ _CATEGORICAL_SEMANTIC_TYPES = {
 }
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# ── Helpers ─────────────────────────────────────────────────────────────
 
 def _rules_config_to_yaml_str(rules_config: RulesConfig) -> str:
     """Serialises a RulesConfig object to a human-readable YAML string."""
@@ -312,7 +316,7 @@ def _build_visual_rules_editor(
     return resulting_config, resulting_yaml
 
 
-# ── Main ─────────────────────────────────────────────────────────────────────
+# ── Main ──────────────────────────────────────────────────────────────
 
 def main() -> None:
     st.set_page_config(
@@ -415,7 +419,7 @@ def main() -> None:
         except Exception:
             pass
 
-    # ── Tabs ──────────────────────────────────────────────────────────────────
+    # ── Tabs ───────────────────────────────────────────────────────────[...]
     tab_profile, tab_audit = st.tabs(
         [
             "📊 1. Perfil Descriptivo y Completitud",
@@ -423,9 +427,9 @@ def main() -> None:
         ]
     )
 
-    # ═════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════[...]
     # PESTAÑA 1: PERFIL DESCRIPTIVO Y COMPLETITUD
-    # ═════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════[...]
     with tab_profile:
         st.markdown(
             "> **Perfilado Estructural y Semántico**: Describe dimensiones, completitud e infiere "
@@ -472,9 +476,9 @@ def main() -> None:
         with st.expander("🔍 Vista previa del dataset (primeros registros)", expanded=False):
             st.dataframe(df.head(10), use_container_width=True)
 
-    # ═════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════[...]
     # PESTAÑA 2: AUDITORÍA DE REGLAS CLÍNICAS
-    # ═════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════[...]
     with tab_audit:
         st.markdown(
             "> **Auditoría de Calidad**: Evalúa los datos contra restricciones clínicas "
@@ -491,9 +495,9 @@ def main() -> None:
             ]
         )
 
-        # ─────────────────────────────────────────────────────────────────────
+        # ───────────────────────────────────────────────────────────────
         # SUB-TAB A: RESULTADOS DE AUDITORÍA
-        # ─────────────────────────────────────────────────────────────────────
+        # ───────────────────────────────────────────────────────────────
         with sub_results:
             if rules_config_from_yaml is None:
                 st.warning(
@@ -506,9 +510,9 @@ def main() -> None:
                 report = validate_dataframe(df, rules_config_from_yaml)
                 _render_violations_table(report)
 
-        # ─────────────────────────────────────────────────────────────────────
+        # ───────────────────────────────────────────────────────────────
         # SUB-TAB B: EDITOR YAML (USUARIO TÉCNICO)
-        # ─────────────────────────────────────────────────────────────────────
+        # ───────────────────────────────────────────────────────────────
         with sub_yaml_editor:
             st.markdown(
                 "Aquí puedes ver las reglas activas en formato YAML, **descargarlas**, "
@@ -578,9 +582,9 @@ nombre_columna:
                     """
                 )
 
-        # ─────────────────────────────────────────────────────────────────────
+        # ───────────────────────────────────────────────────────────────
         # SUB-TAB C: CONSTRUCTOR VISUAL (USUARIO NO TÉCNICO)
-        # ─────────────────────────────────────────────────────────────────────
+        # ───────────────────────────────────────────────────────────────
         with sub_visual_editor:
             visual_config, visual_yaml = _build_visual_rules_editor(
                 df=df,
