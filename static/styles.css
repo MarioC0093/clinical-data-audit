@@ -1,0 +1,40 @@
+/*
+ * styles.css — Estilos personalizados para Clinical Data Audit
+ *
+ * Este archivo se carga automáticamente al iniciar la aplicación.
+ * Puedes modificarlo libremente para adaptar la apariencia sin tocar el código Python.
+ *
+ * NOTA: Evita sobreescribir selectores genéricos de Streamlit (h1, h2, pre, stMetric…)
+ * ya que pueden desencajar el layout base. Los estilos seguros son los que afectan
+ * solo a elementos propios de la app (clases personalizadas, sidebar, authorship).
+ *
+ * Referencia de selectores Streamlit más usados:
+ *   [data-testid="stSidebar"]        → barra lateral completa
+ *   [data-testid="stMetric"]         → tarjetas de métrica  (cuidado: afecta al layout)
+ *   .stTabs [data-baseweb="tab"]     → pestañas
+ *   [data-testid="stDataFrame"]      → tablas de datos
+ */
+
+/* ── Sidebar: Fondo ───────────────────────────────────────────────────
+   Dejamos que Streamlit gestione el fondo para no romper el Modo Oscuro. */
+
+
+/* ── Bloque de autoría (clase personalizada, no interfiere con Streamlit) ── */
+
+.sidebar-authorship {
+    font-size: 0.78rem;
+    color: #5a6a7e;
+    line-height: 1.7;
+    margin-top: 4px;
+}
+
+.sidebar-authorship a {
+    color: #1a6eb5;
+    text-decoration: none;
+}
+
+.sidebar-authorship a:hover {
+    text-decoration: underline;
+}
+
+/* ── Añade aquí tus propios estilos adicionales ─────────────────────────── */

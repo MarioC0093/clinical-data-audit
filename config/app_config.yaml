@@ -1,0 +1,38 @@
+# ── Configuración de la aplicación ──────────────────────────────────────────
+# Edita este archivo para personalizar los valores de autoría y contacto
+# que aparecen en la barra lateral de la aplicación.
+
+app:
+  title: "Clinical Data Audit"
+  subtitle: "Auditoría, control de calidad y validación de reglas clínicas en datasets tabulares."
+  icon: "🏥"
+
+authorship:
+  # Autor responsable del proyecto
+  team: "Mario Camacho — Bioestadístico y Científico de Datos"
+  # Afiliación profesional
+  # institution: "Universidad Francisco de Vitoria · Facultad de Medicina"
+
+# contact:
+#   # Enlace de correo electrónico (mailto:)
+#   email: "mailto:mmario.camacho@gmail.com"
+#   # Perfil profesional
+#   linkedin: "https://www.linkedin.com/in/mario-camacho-b98462ab/"
+#   # Repositorio del proyecto
+#   repository: "https://github.com/MarioC0093/clinical-data-audit"
+#   # URL de documentación (dejar vacío para ocultar)
+#   docs: ""
+#   # Nombres a mostrar de los enlaces
+#   email_label: "Contactar por email"
+#   linkedin_label: "LinkedIn"
+#   repository_label: "Repositorio GitHub"
+
+contact:
+  email: "mmario.camacho@gmail.com"
+  linkedin: "https://www.linkedin.com/in/mario-camacho-b98462ab/"
+  repository: "https://github.com/MarioC0093/clinical-data-audit"
+  docs: ""
+
+  email_label: "Contactar por email"
+  linkedin_label: "LinkedIn"
+  repository_label: "Repositorio GitHub"

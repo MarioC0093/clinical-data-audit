@@ -7,7 +7,7 @@ Herramienta modular en Python para la auditoría, validación y control de calid
 ## 📐 Arquitectura del Proyecto
 
 ```text
-antigravity-clinical-audit/
+clinical-data-audit/
 ├── .gitignore                      # Exclusiones de Git estándar para Python
 ├── README.md                       # Documentación del proyecto
 ├── pyproject.toml                  # Configuración del paquete y pytest
@@ -103,7 +103,7 @@ pytest
 1. Sube el repositorio a GitHub (rama `main`).
 2. Ve a [share.streamlit.io](https://share.streamlit.io) e inicia sesión con tu cuenta de GitHub.
 3. Haz clic en **"New app"** y configura:
-   - **Repository**: `tu-usuario/antigravity-clinical-audit`
+   - **Repository**: `tu-usuario/clinical-data-audit`
    - **Branch**: `main`
    - **Main file path**: `app.py`
 4. Haz clic en **"Deploy"**.

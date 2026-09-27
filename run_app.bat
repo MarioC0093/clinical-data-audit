@@ -3,9 +3,12 @@ setlocal EnableDelayedExpansion
 
 echo.
 echo ======================================================
-echo   Clinical Data Audit — Lanzador local
+echo   Clinical Data Audit -- Lanzador local
 echo ======================================================
 echo.
+
+REM Cambiamos al directorio donde esta este .bat (raiz del proyecto)
+pushd "%~dp0"
 
 REM ── 1. Verificar que Python está disponible ─────────────────────────────────
 python --version >nul 2>&1
@@ -27,29 +30,31 @@ if not exist ".venv\" (
         exit /b 1
     )
     echo [INFO] Entorno virtual creado.
-
-    REM Actualizar pip antes de instalar dependencias
     echo [INFO] Actualizando pip ...
-    .venv\Scripts\python.exe -m pip install --upgrade pip --quiet
-
-    echo [INFO] Instalando dependencias desde requirements.txt ...
-    .venv\Scripts\python.exe -m pip install -r requirements.txt --quiet
-    if errorlevel 1 (
-        echo [ERROR] Error al instalar dependencias.
-        pause
-        exit /b 1
-    )
-    echo [INFO] Dependencias instaladas correctamente.
+    ".venv\Scripts\python.exe" -m pip install --upgrade pip --quiet
 ) else (
     echo [INFO] Entorno virtual existente detectado en .venv\
 )
 
-REM ── 3. Lanzar la aplicacion Streamlit ────────────────────────────────────────
+REM ── 3. Sincronizar dependencias siempre (por si requirements.txt cambió) ────
+echo [INFO] Verificando dependencias desde requirements.txt ...
+".venv\Scripts\python.exe" -m pip install -r requirements.txt --quiet
+if errorlevel 1 (
+    echo [ERROR] Error al instalar dependencias.
+    pause
+    exit /b 1
+)
+echo [INFO] Dependencias OK.
+
+REM ── 4. Lanzar la aplicacion Streamlit ────────────────────────────────────────
 echo.
 echo [INFO] Iniciando Clinical Data Audit en el navegador...
 echo [INFO] Para detener la aplicacion, cierra esta ventana o pulsa Ctrl+C
 echo.
 
-.venv\Scripts\streamlit.exe run app.py
+".venv\Scripts\python.exe" -m streamlit run app.py
 
+timeout /t 500
+
+popd
 endlocal
