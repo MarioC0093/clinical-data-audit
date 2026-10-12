@@ -8,6 +8,9 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 
+from clinical_audit.inference.models import SemanticType
+
+
 # ── Data containers ──────────────────────────────────────────────────────────
 
 @dataclass
@@ -90,11 +93,29 @@ def _is_binary_column(series: pd.Series) -> bool:
 
 # ── Main builder ──────────────────────────────────────────────────────────────
 
-def compute_stats_summary(df: pd.DataFrame) -> StatsSummary:
+_NUMERIC_SEMANTIC_TYPES = {
+    SemanticType.NUMERIC_CONTINUOUS,
+    SemanticType.NUMERIC_DISCRETE,
+}
+
+_FACTOR_SEMANTIC_TYPES = {
+    SemanticType.BINARY,
+    SemanticType.CATEGORICAL_NOMINAL,
+}
+
+
+def compute_stats_summary(
+    df: pd.DataFrame,
+    column_types: Optional[Dict[str, SemanticType]] = None,
+) -> StatsSummary:
     """Computes a complete StatsSummary for *df*.
 
     Args:
         df: Input pandas DataFrame.
+        column_types: Optional mapping of column names to SemanticType.
+            When provided, variables are classified as numeric or categorical
+            according to these types (respecting user overrides) rather than
+            relying solely on pandas dtype heuristics.
 
     Returns:
         StatsSummary populated with numeric stats, frequency tables, and
@@ -107,10 +128,20 @@ def compute_stats_summary(df: pd.DataFrame) -> StatsSummary:
     complete_pct = round(n_complete / n_rows * 100, 1) if n_rows > 0 else 0.0
 
     # Identify numeric vs. categorical columns
-    numeric_cols = df.select_dtypes(include="number").columns.tolist()
-    n_numeric = len(numeric_cols)
+    if column_types:
+        numeric_cols = [
+            c for c in df.columns
+            if column_types.get(c) in _NUMERIC_SEMANTIC_TYPES
+        ]
+        factor_cols = [
+            c for c in df.columns
+            if column_types.get(c) in _FACTOR_SEMANTIC_TYPES
+        ]
+    else:
+        numeric_cols = df.select_dtypes(include="number").columns.tolist()
+        factor_cols = [c for c in df.columns if _is_factor_column(df[c])]
 
-    factor_cols = [c for c in df.columns if _is_factor_column(df[c])]
+    n_numeric = len(numeric_cols)
     n_categorical = len(factor_cols)
 
     # ── Numeric statistics ────────────────────────────────────────────────────

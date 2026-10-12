@@ -22,7 +22,11 @@ import streamlit as st
 import yaml
 
 from clinical_audit.inference.classifier import infer_dataset_types
-from clinical_audit.inference.models import SemanticType
+from clinical_audit.inference.models import (
+    ConfidenceLevel,
+    InferenceResult,
+    SemanticType,
+)
 from clinical_audit.ingestion.loader import load_clinical_data
 from clinical_audit.quality.profiler import generate_quality_report
 from clinical_audit.rules.config import load_rules_from_yaml
@@ -112,6 +116,34 @@ def _infer_constraint_type(semantic_type: SemanticType) -> Optional[ConstraintTy
     if semantic_type in _CATEGORICAL_SEMANTIC_TYPES:
         return ConstraintType.CATEGORICAL
     return None
+
+
+def _apply_semantic_overrides(
+    inferences: Dict[str, InferenceResult],
+    overrides: Dict[str, SemanticType],
+) -> Dict[str, InferenceResult]:
+    """Applies user-selected semantic type corrections on top of inferred types.
+
+    If a column has no override or the override is empty, the original heuristic
+    inferred type is retained (prima 'Tipo Inferido').
+    """
+    effective: Dict[str, InferenceResult] = dict(inferences)
+    for col_name, stype in overrides.items():
+        orig_inf = inferences.get(col_name)
+        effective[col_name] = InferenceResult(
+            column_name=col_name,
+            semantic_type=stype,
+            confidence=ConfidenceLevel.HIGH,
+            score=1.0,
+            rationale=(
+                f"Asignado manualmente por el usuario "
+                f"(sobrescribe la inferencia automática '{orig_inf.semantic_type.value}')."
+                if orig_inf
+                else "Asignado manualmente por el usuario."
+            ),
+            evidence=orig_inf.evidence if orig_inf else {},
+        )
+    return effective
 
 
 def _render_violations_table(report: ValidationReport) -> None:
@@ -334,7 +366,12 @@ def _render_stats_tab(df: pd.DataFrame, inferences: dict) -> None:
         "y visualizaciones exploratorias de variables categóricas/factor."
     )
 
-    stats = compute_stats_summary(df)
+    col_types = (
+        {col: inf.semantic_type for col, inf in inferences.items()}
+        if inferences
+        else None
+    )
+    stats = compute_stats_summary(df, column_types=col_types)
 
     # ── 3.0 Dataset-level KPIs ────────────────────────────────────────────────
     k1, k2, k3, k4, k5, k6 = st.columns(6)
@@ -734,6 +771,7 @@ def main() -> None:
     # ── Análisis base ─────────────────────────────────────────────────────────
     quality_report = generate_quality_report(df, file_name=data_label)
     inferences = infer_dataset_types(df)
+    effective_inferences: Dict[str, InferenceResult] = dict(inferences)
 
     rules_config_from_yaml: Optional[RulesConfig] = None
     if active_yaml_str:
@@ -767,6 +805,21 @@ def main() -> None:
         col4.metric("Duplicados Exactos", quality_report.exact_duplicates_count)
 
         st.subheader("Calidad y Clasificación Semántica por Variable")
+        st.caption(
+            "💡 Si el **Tipo Inferido** no es el esperado, puedes corregirlo seleccionando el tipo "
+            "en el desplegable de **'Tipo Corregido'**. Si lo dejas en blanco, volverá a primar el 'Tipo Inferido'. "
+            "Cualquier selección actualizará automáticamente las reglas y los análisis estadísticos de la app."
+        )
+
+        dataset_key = f"{data_label}_{len(df)}"
+        if st.session_state.get("_active_dataset_key") != dataset_key:
+            for k in list(st.session_state.keys()):
+                if k.startswith("profile_editor_"):
+                    del st.session_state[k]
+            st.session_state["_active_dataset_key"] = dataset_key
+
+        editor_key = f"profile_editor_{dataset_key}"
+
         profile_rows = []
         for col in quality_report.columns.values():
             inf = inferences.get(col.name)
@@ -777,6 +830,7 @@ def main() -> None:
                 {
                     "Variable": col.name,
                     "Tipo Inferido": sem_type,
+                    "Tipo Corregido": "",
                     "Confianza": conf_level,
                     "Tipo Pandas": col.dtype,
                     "Valores Faltantes": col.missing_count,
@@ -787,15 +841,67 @@ def main() -> None:
                     ),
                 }
             )
-        st.dataframe(pd.DataFrame(profile_rows), use_container_width=True)
 
-        with st.expander("🧠 Justificación de la Inferencia Heurística por Variable", expanded=False):
-            for col_name, inf in inferences.items():
-                st.markdown(
-                    f"- **`{col_name}`** $\\rightarrow$ **{inf.semantic_type.value}** "
-                    f"*(Confianza: `{inf.confidence.value}`, Score: `{inf.score:.2f}`)*: "
-                    f"{inf.rationale}"
+        profile_df = pd.DataFrame(profile_rows)
+        edited_df = st.data_editor(
+            profile_df,
+            column_config={
+                "Tipo Corregido": st.column_config.SelectboxColumn(
+                    "Tipo Corregido",
+                    help="Corrige manualmente el tipo inferido. Déjalo en blanco para volver a usar 'Tipo Inferido'.",
+                    options=[
+                        "",
+                        SemanticType.IDENTIFIER.value,
+                        SemanticType.BINARY.value,
+                        SemanticType.CATEGORICAL_NOMINAL.value,
+                        SemanticType.NUMERIC_CONTINUOUS.value,
+                        SemanticType.NUMERIC_DISCRETE.value,
+                    ],
+                    required=False,
                 )
+            },
+            disabled=[c for c in profile_df.columns if c != "Tipo Corregido"],
+            hide_index=True,
+            use_container_width=True,
+            key=editor_key,
+        )
+
+        type_overrides: Dict[str, SemanticType] = {}
+        for _, r in edited_df.iterrows():
+            col_name = str(r["Variable"])
+            val = r.get("Tipo Corregido")
+            if pd.notna(val) and str(val).strip() and str(val).strip() in {t.value for t in SemanticType}:
+                type_overrides[col_name] = SemanticType(str(val).strip())
+
+        effective_inferences = _apply_semantic_overrides(inferences, type_overrides)
+
+        if type_overrides:
+            corr_list = ", ".join(f"`{k}`: **{v.value}**" for k, v in type_overrides.items())
+            c_col1, c_col2 = st.columns([5, 1])
+            with c_col1:
+                st.info(f"✏️ **Correcciones activas ({len(type_overrides)})**: {corr_list}. Toda la aplicación utilizará estas correcciones.")
+            with c_col2:
+                if st.button("🔄 Restablecer", help="Vuelve a dejar todas las variables en Tipo Inferido"):
+                    if editor_key in st.session_state:
+                        del st.session_state[editor_key]
+                    st.rerun()
+
+        with st.expander("🧠 Justificación de la Clasificación Semántica por Variable", expanded=False):
+            for col_name, inf in effective_inferences.items():
+                if col_name in type_overrides:
+                    orig_inf = inferences.get(col_name)
+                    orig_label = orig_inf.semantic_type.value if orig_inf else "-"
+                    st.markdown(
+                        f"- **`{col_name}`** $\\rightarrow$ **{inf.semantic_type.value}** "
+                        f"*(Corregido manualmente; inferencia automática original: `{orig_label}`)*: "
+                        f"{inf.rationale}"
+                    )
+                else:
+                    st.markdown(
+                        f"- **`{col_name}`** $\\rightarrow$ **{inf.semantic_type.value}** "
+                        f"*(Confianza: `{inf.confidence.value}`, Score: `{inf.score:.2f}`)*: "
+                        f"{inf.rationale}"
+                    )
 
         with st.expander("🔍 Vista previa del dataset (primeros registros)", expanded=False):
             st.dataframe(df.head(10), use_container_width=True)
@@ -896,7 +1002,7 @@ nombre_columna:
         with sub_visual_editor:
             visual_config, visual_yaml = _build_visual_rules_editor(
                 df=df,
-                inferences=inferences,
+                inferences=effective_inferences,
                 active_yaml_str=active_yaml_str,
             )
 
@@ -924,7 +1030,7 @@ nombre_columna:
     # PESTAÑA 3: RESUMEN ESTADÍSTICO
     # ═════════════════════════════════════════════════════════════════════════
     with tab_stats:
-        _render_stats_tab(df, inferences)
+        _render_stats_tab(df, effective_inferences)
 
 
 if __name__ == "__main__":
